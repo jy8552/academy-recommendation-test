@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>나에게 맞는 러셀 기숙학원 찾기</title>
+    <meta name="description" content="학습 성향을 분석하여 가장 적합한 러셀 기숙학원을 추천해드립니다. 5분 투자로 맞춤 학원을 찾아보세요!">
+    <meta name="keywords" content="재수학원, 학원추천, 학습성향검사, 입시, 재수생">
+    
+    <!-- Open Graph (소셜미디어 공유용) -->
+    <meta property="og:title" content="나에게 맞는 러셀 기숙학원 찾기">
+    <meta property="og:description" content="학습 성향을 분석하여 가장 적합한 기숙학원을 추천해드립니다.">
+    <meta property="og:type" content="website">
+    
+    <!-- 파비콘 -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📚</text></svg>">
+    
+    <!-- 외부 라이브러리 -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Analytics (선택사항) -->
+    <!-- <script async src="https://www.googletagmanager.com/gtag/js?id=GA_MEASUREMENT_ID"></script> -->
+</head>
+<body>
+    <div id="root"></div>
+
+    <script>
+        // React 기본 설정
+        const { useState } = React;
+
+        const AcademyRecommendationSystem = () => {
+            const [currentStep, setCurrentStep] = useState('start');
+            const [gender, setGender] = useState('');
+            const [userInfo, setUserInfo] = useState({ name: '', birthDate: '', phone: '' });
+            const [currentQuestion, setCurrentQuestion] = useState(0);
+            const [answers, setAnswers] = useState({});
+            const [result, setResult] = useState(null);
+
+            // 20개 문항 데이터 (4개 영역별 5문항씩)
+            const questions = [
+                // 학습 성취도 (Performance) - 5문항
+                {
+                    id: 'performance_1', category: 'performance',
+                    question: '현재 모의고사에서 나의 성적은?',
+                    options: [
+                        { text: '1-2등급대를 유지하고 있다', value: 5 },
+                        { text: '2-3등급대를 유지하고 있다', value: 4 },
+                        { text: '3-4등급대를 유지하고 있다', value: 3 },
+                        { text: '4-5등급대를 유지하고 있다', value: 2 },
+                        { text: '5등급 이하이다', value: 1 }
+                    ]
+                },
+                {
+                    id: 'performance_2', category: 'performance',
+                    question: '나의 목표 대학은?',
+                    options: [
+                        { text: 'SKY, 의대급 최상위권', value: 5 },
+                        { text: '서성한, 중앙대 등 상위권', value: 4 },
+                        { text: '건동홍, 숭실대 등 중위권', value: 3 },
+                        { text: '지거국, 4년제 대학 진학', value: 2 },
+                        { text: '일단 대학 진학이 목표', value: 1 }
+                    ]
+                },
+                {
+                    id: 'performance_3', category: 'performance',
+                    question: '어려운 문제를 만났을 때 나는?',
+                    options: [
+                        { text: '끝까지 파고들어 해결하려 한다', value: 5 },
+                        { text: '적당히 시도해보고 답을 확인한다', value: 4 },
+                        { text: '힌트를 찾아보고 다시 시도한다', value: 3 },
+                        { text: '쉬운 문제부터 다시 풀어본다', value: 2 },
+                        { text: '일단 넘어가고 나중에 다시 본다', value: 1 }
+                    ]
+                },
+                {
+                    id: 'performance_4', category: 'performance',
+                    question: '공부할 때 나는 주로?',
+                    options: [
+                        { text: '고난도 문제 위주로 도전한다', value: 5 },
+                        { text: '중상급 문제를 많이 푼다', value: 4 },
+                        { text: '기본+응용 문제를 섞어서 푼다', value: 3 },
+                        { text: '기본 문제 위주로 충실히 한다', value: 2 },
+                        { text: '쉬운 문제부터 차근차근 한다', value: 1 }
+                    ]
+                },
+                {
+                    id: 'performance_5', category: 'performance',
+                    question: '성적 상승에 대한 나의 목표는?',
+                    options: [
+                        { text: '이미 상위권, 1등급 유지가 목표', value: 5 },
+                        { text: '현재도 괜찮지만 더 올리고 싶다', value: 4 },
+                        { text: '꾸준한 성장을 원한다', value: 3 },
+                        { text: '확실한 성적 상승이 필요하다', value: 2 },
+                        { text: '기초부터 차근차근 올려야 한다', value: 1 }
+                    ]
+                },
+
+                // 과목 성향 (Subject) - 5문항
+                {
+                    id: 'subject_1', category: 'subject',
+                    question: '수학 공부를 할 때 나는?',
+                    options: [
+                        { text: '재미있고 자신감이 넘친다', value: 5 },
+                        { text: '어렵지만 흥미롭다', value: 4 },
+                        { text: '보통이다', value: 3 },
+                        { text: '어렵고 부담스럽다', value: 2 },
+                        { text: '가장 싫어하는 과목이다', value: 1 }
+                    ]
+                },
+                {
+                    id: 'subject_2', category: 'subject',
+                    question: '선호하는 공부 방식은?',
+                    options: [
+                        { text: '논리적 사고와 문제해결', value: 5 },
+                        { text: '공식 활용과 계산', value: 4 },
+                        { text: '둘 다 비슷하게', value: 3 },
+                        { text: '암기와 이해', value: 2 },
+                        { text: '읽기와 해석', value: 1 }
+                    ]
+                },
+                {
+                    id: 'subject_3', category: 'subject',
+                    question: '과탐 과목 선택 시 나는?',
+                    options: [
+                        { text: '물리, 화학 등 이과 과목 선호', value: 5 },
+                        { text: '생명과학 같은 중간 성격 과목', value: 4 },
+                        { text: '아직 확실하지 않다', value: 3 },
+                        { text: '사회탐구가 더 맞는 것 같다', value: 2 },
+                        { text: '확실히 문과 과목이 맞다', value: 1 }
+                    ]
+                },
+                {
+                    id: 'subject_4', category: 'subject',
+                    question: '내가 잘하는 과목 유형은?',
+                    options: [
+                        { text: '수학, 물리 등 논리적 사고', value: 5 },
+                        { text: '수학은 괜찮고 과학도 흥미있다', value: 4 },
+                        { text: '전반적으로 고르게', value: 3 },
+                        { text: '국어, 영어가 더 잘한다', value: 2 },
+                        { text: '확실히 언어영역이 강하다', value: 1 }
+                    ]
+                },
+                {
+                    id: 'subject_5', category: 'subject',
+                    question: '수학 성적이 다른 과목보다?',
+                    options: [
+                        { text: '월등히 좋다', value: 5 },
+                        { text: '조금 더 좋다', value: 4 },
+                        { text: '비슷하다', value: 3 },
+                        { text: '조금 더 낮다', value: 2 },
+                        { text: '확실히 낮다', value: 1 }
+                    ]
+                },
+
+                // 학습 환경 (Environment) - 5문항
+                {
+                    id: 'environment_1', category: 'environment',
+                    question: '같은 성별 친구들과 공부할 때?',
+                    options: [
+                        { text: '훨씬 집중이 잘 된다', value: 5 },
+                        { text: '조금 더 편하다', value: 4 },
+                        { text: '별 차이 없다', value: 3 },
+                        { text: '오히려 산만할 수 있다', value: 2 },
+                        { text: '혼성이 더 좋다', value: 1 }
+                    ]
+                },
+                {
+                    id: 'environment_2', category: 'environment',
+                    question: '친구들과의 경쟁에 대해?',
+                    options: [
+                        { text: '경쟁이 큰 동기부여가 된다', value: 5 },
+                        { text: '적당한 경쟁은 도움이 된다', value: 4 },
+                        { text: '상관없다', value: 3 },
+                        { text: '경쟁보다는 협력이 좋다', value: 2 },
+                        { text: '경쟁이 스트레스다', value: 1 }
+                    ]
+                },
+                {
+                    id: 'environment_3', category: 'environment',
+                    question: '스터디 그룹을 할 때 나는?',
+                    options: [
+                        { text: '리더 역할을 주로 한다', value: 5 },
+                        { text: '적극적으로 참여한다', value: 4 },
+                        { text: '보통이다', value: 3 },
+                        { text: '조용히 따라간다', value: 2 },
+                        { text: '혼자 공부가 더 좋다', value: 1 }
+                    ]
+                },
+                {
+                    id: 'environment_4', category: 'environment',
+                    question: '내 성적이 공개되는 것에 대해?',
+                    options: [
+                        { text: '상관없고 오히려 동기부여된다', value: 5 },
+                        { text: '괜찮다', value: 4 },
+                        { text: '보통이다', value: 3 },
+                        { text: '좀 부담스럽다', value: 2 },
+                        { text: '매우 싫다', value: 1 }
+                    ]
+                },
+                {
+                    id: 'environment_5', category: 'environment',
+                    question: '선생님께 질문할 때?',
+                    options: [
+                        { text: '다른 학생들 앞에서도 자유롭게', value: 5 },
+                        { text: '별로 신경쓰지 않는다', value: 4 },
+                        { text: '상황에 따라 다르다', value: 3 },
+                        { text: '가능하면 조용히 하고 싶다', value: 2 },
+                        { text: '1:1로만 하고 싶다', value: 1 }
+                    ]
+                },
+
+                // 학습 스타일 (Style) - 5문항
+                {
+                    id: 'style_1', category: 'style',
+                    question: '취약 과목이 있을 때 나는?',
+                    options: [
+                        { text: '그 과목에 집중적으로 시간을 투자한다', value: 5 },
+                        { text: '조금 더 많은 시간을 할애한다', value: 4 },
+                        { text: '균형있게 공부한다', value: 3 },
+                        { text: '다른 과목도 함께 관리한다', value: 2 },
+                        { text: '전체적으로 고르게 하는 편이다', value: 1 }
+                    ]
+                },
+                {
+                    id: 'style_2', category: 'style',
+                    question: '수학 실력 향상을 위해서는?',
+                    options: [
+                        { text: '수학만 집중적으로 해야 한다', value: 5 },
+                        { text: '수학 비중을 높여야 한다', value: 4 },
+                        { text: '적절한 비중으로', value: 3 },
+                        { text: '다른 과목과 균형있게', value: 2 },
+                        { text: '전과목 골고루가 우선이다', value: 1 }
+                    ]
+                },
+                {
+                    id: 'style_3', category: 'style',
+                    question: '하루 공부 계획을 세울 때?',
+                    options: [
+                        { text: '1-2과목에 집중한다', value: 5 },
+                        { text: '주요 과목 위주로 배분한다', value: 4 },
+                        { text: '보통이다', value: 3 },
+                        { text: '여러 과목을 골고루 한다', value: 2 },
+                        { text: '모든 과목을 다 하려고 한다', value: 1 }
+                    ]
+                },
+                {
+                    id: 'style_4', category: 'style',
+                    question: '성적 향상 전략은?',
+                    options: [
+                        { text: '약점 과목 집중 공략', value: 5 },
+                        { text: '주요 과목 위주 강화', value: 4 },
+                        { text: '상황에 맞게', value: 3 },
+                        { text: '전체적 균형 유지', value: 2 },
+                        { text: '모든 과목 골고루 상승', value: 1 }
+                    ]
+                },
+                {
+                    id: 'style_5', category: 'style',
+                    question: '특별 수업이나 보충수업에 대해?',
+                    options: [
+                        { text: '필요한 과목만 선택해서 듣는다', value: 5 },
+                        { text: '중요 과목 위주로 듣는다', value: 4 },
+                        { text: '보통이다', value: 3 },
+                        { text: '웬만하면 다 듣는다', value: 2 },
+                        { text: '가능한 모든 수업을 듣는다', value: 1 }
+                    ]
+                }
+            ];
+
+            // 학원 정보
+            const academies = {
+                top_tier: {
+                    name: '최상위권 전문관',
+                    description: 'SKY, 의대 진학을 목표로 하는 최상위권 학생들을 위한 특별관',
+                    features: ['고난도 문제 특화', '소수정예 수업', '개별 컨설팅', '심화 보충수업'],
+                    icon: '🏆',
+                    color: 'from-yellow-400 to-orange-500'
+                },
+                science: {
+                    name: '자연계 전문관',
+                    description: '이공계 진학을 위한 수학, 과학 특화 교육과정',
+                    features: ['수학 집중 교육', '과학 실험실습', '논리적 사고 훈련', '이공계 진로상담'],
+                    icon: '🔬',
+                    color: 'from-blue-400 to-cyan-500'
+                },
+                male: {
+                    name: '남학생 전문관',
+                    description: '남학생들의 학습 특성을 고려한 맞춤형 교육환경',
+                    features: ['남학생 특화 수업', '경쟁 시스템', '체계적 관리', '동기부여 프로그램'],
+                    icon: '👨‍🎓',
+                    color: 'from-indigo-400 to-purple-500'
+                },
+                female: {
+                    name: '여학생 전문관',
+                    description: '여학생들을 위한 안전하고 집중도 높은 학습환경',
+                    features: ['여학생 전용 공간', '협력적 학습', '세심한 케어', '멘토링 시스템'],
+                    icon: '👩‍🎓',
+                    color: 'from-pink-400 to-rose-500'
+                },
+                female_math: {
+                    name: '여학생 수학전문관',
+                    description: '수학에 특화된 여학생 전용 교육과정',
+                    features: ['수학 집중 교육', '여학생 맞춤 교수법', '단계별 수준별 수업', '수학 자신감 향상'],
+                    icon: '📊',
+                    color: 'from-emerald-400 to-teal-500'
+                }
+            };
+
+            // 함수들
+            const selectGender = (selectedGender) => {
+                setGender(selectedGender);
+                setCurrentStep('userInfo');
+            };
+
+            const handleUserInfoChange = (field, value) => {
+                setUserInfo(prev => ({ ...prev, [field]: value }));
+            };
+
+            const startTest = () => {
+                if (!userInfo.name || !userInfo.birthDate || !userInfo.phone) {
+                    alert('모든 정보를 입력해주세요.');
+                    return;
+                }
+                setCurrentStep('test');
+                setCurrentQuestion(0);
+                setAnswers({});
+            };
+
+            const handleAnswer = (value, questionId) => {
+                const newAnswers = { ...answers, [questionId]: { questionId, value } };
+                setAnswers(newAnswers);
+
+                if (currentQuestion < questions.length - 1) {
+                    setCurrentQuestion(currentQuestion + 1);
+                } else {
+                    const result = calculateResult();
+                    setResult(result);
+                    setCurrentStep('result');
+                }
+            };
+
+            const calculateResult = () => {
+                // 각 영역별 점수 계산
+                const scores = {
+                    performance: 0,    // 학습 성취도
+                    subject: 0,        // 과목 성향 (수학/과학)
+                    environment: 0,    // 학습 환경 (경쟁/협력)
+                    style: 0          // 학습 스타일 (집중/균형)
+                };
+
+                // 영역별 점수 합계
+                Object.values(answers).forEach(answer => {
+                    const question = questions.find(q => q.id === answer.questionId);
+                    if (question) {
+                        scores[question.category] += answer.value;
+                    }
+                });
+
+                // 영역별 평균 점수 (1-5 범위)
+                Object.keys(scores).forEach(key => {
+                    scores[key] = scores[key] / 5;
+                });
+
+                // 학원별 추천 점수 계산
+                let recommendations = [];
+
+                // 🏆 최상위권 전문관: 성취도 높음 + 경쟁 환경 선호
+                if (scores.performance >= 4.0 && scores.environment >= 4.0) {
+                    recommendations.push({
+                        academy: 'top_tier',
+                        score: (scores.performance + scores.environment) / 2,
+                        reason: '높은 성취도와 경쟁 환경 선호'
+                    });
+                }
+
+                // 🔬 자연계 전문관: 수학/과학 성향 + 집중형 학습
+                if (scores.subject >= 4.0 && scores.style >= 4.0) {
+                    recommendations.push({
+                        academy: 'science',
+                        score: (scores.subject + scores.style) / 2,
+                        reason: '수학 특화와 집중형 학습 성향'
+                    });
+                }
+
+                // 📊 여학생 수학전문관: 여성 + 수학 성향 + 집중 학습
+                if (gender === 'female' && scores.subject >= 4.0 && scores.style >= 4.0) {
+                    recommendations.push({
+                        academy: 'female_math',
+                        score: (scores.subject + scores.style + 1) / 3,
+                        reason: '여학생 맞춤 수학 특화 교육'
+                    });
+                }
+
+                // 👨‍🎓 남학생 전문관: 남성 + 경쟁 환경 선호
+                if (gender === 'male' && scores.environment >= 3.5) {
+                    recommendations.push({
+                        academy: 'male',
+                        score: (scores.environment + 1) / 2,
+                        reason: '경쟁적 환경을 선호하는 남학생'
+                    });
+                }
+
+                // 👩‍🎓 여학생 전문관: 여성 + 협력 환경 선호
+                if (gender === 'female' && scores.environment <= 3.0) {
+                    recommendations.push({
+                        academy: 'female',
+                        score: (5 - scores.environment + 1) / 2,
+                        reason: '협력적 환경을 선호하는 여학생'
+                    });
+                }
+
+                // 기본 추천 (위 조건에 맞지 않을 경우)
+                if (recommendations.length === 0) {
+                    if (gender === 'male') {
+                        recommendations.push({
+                            academy: 'male',
+                            score: 3.0,
+                            reason: '남학생 기본 추천'
+                        });
+                    } else {
+                        recommendations.push({
+                            academy: 'female',
+                            score: 3.0,
+                            reason: '여학생 기본 추천'
+                        });
+                    }
+                }
+
+                // 점수순 정렬
+                recommendations.sort((a, b) => b.score - a.score);
+
+                // 전체 평균 점수
+                const totalAvg = (scores.performance + scores.subject + scores.environment + scores.style) / 4;
+
+                return {
+                    academy: recommendations[0].academy,
+                    score: Math.round(recommendations[0].score * 20),
+                    totalScore: totalAvg,
+                    scores: scores,
+                    reason: recommendations[0].reason,
+                    alternatives: recommendations.slice(1, 3)
+                };
+            };
+
+            const resetTest = () => {
+                setCurrentStep('start');
+                setGender('');
+                setUserInfo({ name: '', birthDate: '', phone: '' });
+                setCurrentQuestion(0);
+                setAnswers({});
+                setResult(null);
+            };
+
+            const progress = ((currentQuestion + 1) / questions.length) * 100;
+
+            // 시작 화면
+            if (currentStep === 'start') {
+                return React.createElement('div', {
+                    className: 'min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4'
+                }, 
+                    React.createElement('div', { className: 'max-w-2xl mx-auto' },
+                        React.createElement('div', { className: 'bg-white rounded-2xl shadow-xl p-8 text-center' },
+                            React.createElement('div', { className: 'mb-8' },
+                                React.createElement('div', {
+                                    className: 'inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full mb-4 text-4xl'
+                                }, '📚'),
+                                React.createElement('h1', {
+                                    className: 'text-3xl font-bold text-gray-800 mb-4'
+                                }, '러셀 기숙학원 추천 검사'),
+                                React.createElement('p', {
+                                    className: 'text-gray-600 text-lg'
+                                }, '당신의 학습 성향을 분석하여 가장 적합한 학원을 추천해드립니다')
+                            ),
+                            React.createElement('div', { className: 'space-y-4 mb-8' },
+                                React.createElement('div', {
+                                    className: 'flex items-center justify-center space-x-4 text-gray-600'
+                                },
+                                    React.createElement('span', null, '🎯 20개 문항'),
+                                    React.createElement('span', null, '⏱️ 5분 소요')
+                                ),
+                                React.createElement('p', {
+                                    className: 'text-sm text-gray-500'
+                                }, '모든 문항에 솔직하게 답변해주세요')
+                            ),
+                            React.createElement('div', { className: 'space-y-4' },
+                                React.createElement('h3', {
+                                    className: 'text-xl font-semibold text-gray-800 mb-4'
+                                }, '성별을 선택해주세요'),
+                                React.createElement('div', { className: 'grid grid-cols-2 gap-4' },
+                                    React.createElement('button', {
+                                        onClick: () => selectGender('male'),
+                                        className: 'flex items-center justify-center p-6 bg-blue-50 hover:bg-blue-100 border-2 border-blue-200 rounded-xl transition-all transform hover:scale-105'
+                                    },
+                                        React.createElement('span', {
+                                            className: 'text-lg font-semibold text-blue-800'
+                                        }, '👤 남학생')
+                                    ),
+                                    React.createElement('button', {
+                                        onClick: () => selectGender('female'),
+                                        className: 'flex items-center justify-center p-6 bg-pink-50 hover:bg-pink-100 border-2 border-pink-200 rounded-xl transition-all transform hover:scale-105'
+                                    },
+                                        React.createElement('span', {
+                                            className: 'text-lg font-semibold text-pink-800'
+                                        }, '👤 여학생')
+                                    )
+                                )
+                            )
+                        )
+                    )
+                );
+            }
+
+            // 개인정보 입력 화면
+            if (currentStep === 'userInfo') {
+                return React.createElement('div', {
+                    className: 'min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4'
+                },
+                    React.createElement('div', { className: 'max-w-2xl mx-auto' },
+                        React.createElement('div', { className: 'bg-white rounded-2xl shadow-xl p-8' },
+                            React.createElement('div', { className: 'text-center mb-8' },
+                                React.createElement('div', {
+                                    className: 'inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-green-500 to-teal-600 rounded-full mb-4 text-4xl'
+                                }, '📋'),
+                                React.createElement('h1', {
+                                    className: 'text-3xl font-bold text-gray-800 mb-4'
+                                }, '기본 정보 입력'),
+                                React.createElement('p', {
+                                    className: 'text-gray-600 text-lg'
+                                }, '검사 결과와 맞춤 상담을 위해 기본 정보를 입력해주세요'),
+                                React.createElement('p', {
+                                    className: 'text-sm text-gray-500 mt-2'
+                                }, `선택하신 성별: ${gender === 'male' ? '남학생' : '여학생'}`)
+                            ),
+                            React.createElement('div', { className: 'space-y-6' },
+                                React.createElement('div', null,
+                                    React.createElement('label', {
+                                        className: 'block text-sm font-semibold text-gray-700 mb-2'
+                                    }, '이름'),
+                                    React.createElement('input', {
+                                        type: 'text',
+                                        placeholder: '이름을 입력해주세요',
+                                        value: userInfo.name,
+                                        onChange: (e) => handleUserInfoChange('name', e.target.value),
+                                        className: 'w-full p-4 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none transition-colors text-lg'
+                                    })
+                                ),
+                                React.createElement('div', null,
+                                    React.createElement('label', {
+                                        className: 'block text-sm font-semibold text-gray-700 mb-2'
+                                    }, '생년월일'),
+                                    React.createElement('input', {
+                                        type: 'date',
+                                        value: userInfo.birthDate,
+                                        onChange: (e) => handleUserInfoChange('birthDate', e.target.value),
+                                        className: 'w-full p-4 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none transition-colors text-lg'
+                                    })
+                                ),
+                                React.createElement('div', null,
+                                    React.createElement('label', {
+                                        className: 'block text-sm font-semibold text-gray-700 mb-2'
+                                    }, '연락처'),
+                                    React.createElement('input', {
+                                        type: 'tel',
+                                        placeholder: '010-1234-5678',
+                                        value: userInfo.phone,
+                                        onChange: (e) => handleUserInfoChange('phone', e.target.value),
+                                        className: 'w-full p-4 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none transition-colors text-lg'
+                                    })
+                                )
+                            ),
+                            React.createElement('div', { className: 'mt-8 flex justify-between' },
+                                React.createElement('button', {
+                                    onClick: () => setCurrentStep('start'),
+                                    className: 'px-6 py-3 bg-gray-200 text-gray-700 font-semibold rounded-lg hover:bg-gray-300 transition-colors'
+                                }, '← 뒤로가기'),
+                                React.createElement('button', {
+                                    onClick: startTest,
+                                    className: 'px-8 py-3 bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-semibold rounded-lg hover:from-blue-600 hover:to-indigo-700 transition-all transform hover:scale-105'
+                                }, '검사 시작하기 →')
+                            ),
+                            React.createElement('div', { className: 'mt-6 text-center' },
+                                React.createElement('p', {
+                                    className: 'text-xs text-gray-400'
+                                }, '입력하신 정보는 상담 목적으로만 사용되며 안전하게 보호됩니다.')
+                            )
+                        )
+                    )
+                );
+            }
+
+            // 검사 화면
+            if (currentStep === 'test') {
+                const currentQ = questions[currentQuestion];
+                
+                return React.createElement('div', {
+                    className: 'min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4'
+                },
+                    React.createElement('div', { className: 'max-w-2xl mx-auto' },
+                        React.createElement('div', { className: 'bg-white rounded-2xl shadow-xl p-8' },
+                            React.createElement('div', { className: 'mb-8' },
+                                React.createElement('div', { className: 'flex justify-between items-center mb-2' },
+                                    React.createElement('span', {
+                                        className: 'text-sm font-medium text-gray-600'
+                                    }, `문항 ${currentQuestion + 1} / ${questions.length}`),
+                                    React.createElement('span', {
+                                        className: 'text-sm font-medium text-gray-600'
+                                    }, `${Math.round(progress)}%`)
+                                ),
+                                React.createElement('div', { className: 'w-full bg-gray-200 rounded-full h-2' },
+                                    React.createElement('div', {
+                                        className: 'bg-gradient-to-r from-blue-500 to-indigo-600 h-2 rounded-full transition-all duration-300',
+                                        style: { width: `${progress}%` }
+                                    })
+                                )
+                            ),
+                            React.createElement('div', { className: 'text-center mb-8' },
+                                React.createElement('h2', {
+                                    className: 'text-2xl font-bold text-gray-800 mb-4'
+                                }, currentQ.question)
+                            ),
+                            React.createElement('div', { className: 'space-y-3' },
+                                ...currentQ.options.map((option, index) => 
+                                    React.createElement('button', {
+                                        key: index,
+                                        onClick: () => handleAnswer(option.value, currentQ.id),
+                                        className: 'w-full p-4 text-left bg-gray-50 hover:bg-blue-50 border border-gray-200 hover:border-blue-300 rounded-lg transition-all transform hover:scale-[1.02]'
+                                    },
+                                        React.createElement('div', { className: 'flex items-center' },
+                                            React.createElement('div', {
+                                                className: 'w-8 h-8 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center font-semibold mr-4'
+                                            }, index + 1),
+                                            React.createElement('span', {
+                                                className: 'text-gray-800'
+                                            }, option.text)
+                                        )
+                                    )
+                                )
+                            )
+                        )
+                    )
+                );
+            }
+
+            // 결과 화면
+            if (currentStep === 'result' && result) {
+                const academy = academies[result.academy];
+                
+                return React.createElement('div', {
+                    className: 'min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4'
+                },
+                    React.createElement('div', { className: 'max-w-4xl mx-auto space-y-6' },
+                        React.createElement('div', {
+                            className: `bg-gradient-to-br ${academy.color} rounded-2xl shadow-xl p-8 text-white`
+                        },
+                            React.createElement('div', { className: 'text-center mb-6' },
+                                React.createElement('div', { className: 'text-6xl mb-4' }, academy.icon),
+                                React.createElement('h1', { className: 'text-3xl font-bold mb-2' }, '추천 학원'),
+                                React.createElement('h2', { className: 'text-4xl font-bold' }, academy.name),
+                                React.createElement('p', { className: 'text-xl mt-4 opacity-90' }, academy.description)
+                            ),
+                            React.createElement('div', { className: 'grid md:grid-cols-2 gap-6' },
+                                React.createElement('div', null,
+                                    React.createElement('h3', { className: 'text-xl font-semibold mb-3' }, '주요 특징'),
+                                    React.createElement('ul', { className: 'space-y-2' },
+                                        ...academy.features.map((feature, index) =>
+                                            React.createElement('li', { key: index, className: 'flex items-center' },
+                                                React.createElement('span', { className: 'mr-2' }, '▶'),
+                                                feature
+                                            )
+                                        )
+                                    )
+                                ),
+                                React.createElement('div', null,
+                                    React.createElement('h3', { className: 'text-xl font-semibold mb-3' }, '검사 결과'),
+                                    React.createElement('div', { className: 'bg-white bg-opacity-20 rounded-lg p-4' },
+                                        React.createElement('div', { className: 'space-y-2 text-sm' },
+                                            React.createElement('p', null, `👤 ${userInfo.name}`),
+                                            React.createElement('p', null, `📅 ${userInfo.birthDate}`),
+                                            React.createElement('p', null, `📞 ${userInfo.phone}`),
+                                            React.createElement('p', null, `🎯 매칭도: ${result.score}/100점`),
+                                            React.createElement('p', { 
+                                                className: 'pt-2 border-t border-white border-opacity-30 text-xs' 
+                                            }, `추천 이유: ${result.reason}`)
+                                        )
+                                    )
+                                )
+                            )
+                        ),
+
+                        // 상세 성향 분석
+                        React.createElement('div', { className: 'bg-white rounded-2xl shadow-xl p-8' },
+                            React.createElement('h3', { className: 'text-2xl font-bold text-gray-800 mb-6 text-center' }, '상세 성향 분석'),
+                            React.createElement('div', { className: 'grid md:grid-cols-2 gap-6' },
+                                React.createElement('div', { className: 'space-y-4' },
+                                    // 학습 성취도
+                                    React.createElement('div', null,
+                                        React.createElement('div', { className: 'flex justify-between mb-2' },
+                                            React.createElement('span', { className: 'font-semibold text-gray-700' }, '🎯 학습 성취도'),
+                                            React.createElement('span', { className: 'text-gray-600' }, `${result.scores.performance.toFixed(1)}/5.0`)
+                                        ),
+                                        React.createElement('div', { className: 'w-full bg-gray-200 rounded-full h-3' },
+                                            React.createElement('div', {
+                                                className: 'bg-gradient-to-r from-yellow-400 to-orange-500 h-3 rounded-full transition-all duration-500',
+                                                style: { width: `${(result.scores.performance / 5) * 100}%` }
+                                            })
+                                        ),
+                                        React.createElement('p', { className: 'text-sm text-gray-600 mt-1' },
+                                            result.scores.performance >= 4.5 ? '최상위권형' :
+                                            result.scores.performance >= 4.0 ? '상위권형' :
+                                            result.scores.performance >= 3.0 ? '성장형' : '기초탄탄형'
+                                        )
+                                    ),
+                                    // 과목 성향
+                                    React.createElement('div', null,
+                                        React.createElement('div', { className: 'flex justify-between mb-2' },
+                                            React.createElement('span', { className: 'font-semibold text-gray-700' }, '📚 과목 성향'),
+                                            React.createElement('span', { className: 'text-gray-600' }, `${result.scores.subject.toFixed(1)}/5.0`)
+                                        ),
+                                        React.createElement('div', { className: 'w-full bg-gray-200 rounded-full h-3' },
+                                            React.createElement('div', {
+                                                className: 'bg-gradient-to-r from-blue-400 to-cyan-500 h-3 rounded-full transition-all duration-500',
+                                                style: { width: `${(result.scores.subject / 5) * 100}%` }
+                                            })
+                                        ),
+                                        React.createElement('p', { className: 'text-sm text-gray-600 mt-1' },
+                                            result.scores.subject >= 4.0 ? '수학/과학 특화형' :
+                                            result.scores.subject >= 3.0 ? '균형형' : '인문계 성향'
+                                        )
+                                    )
+                                ),
+                                React.createElement('div', { className: 'space-y-4' },
+                                    // 학습 환경
+                                    React.createElement('div', null,
+                                        React.createElement('div', { className: 'flex justify-between mb-2' },
+                                            React.createElement('span', { className: 'font-semibold text-gray-700' }, '🏫 학습 환경'),
+                                            React.createElement('span', { className: 'text-gray-600' }, `${result.scores.environment.toFixed(1)}/5.0`)
+                                        ),
+                                        React.createElement('div', { className: 'w-full bg-gray-200 rounded-full h-3' },
+                                            React.createElement('div', {
+                                                className: 'bg-gradient-to-r from-purple-400 to-pink-500 h-3 rounded-full transition-all duration-500',
+                                                style: { width: `${(result.scores.environment / 5) * 100}%` }
+                                            })
+                                        ),
+                                        React.createElement('p', { className: 'text-sm text-gray-600 mt-1' },
+                                            result.scores.environment >= 4.0 ? '경쟁 선호형' :
+                                            result.scores.environment >= 3.0 ? '적응형' : '협력 선호형'
+                                        )
+                                    ),
+                                    // 학습 스타일
+                                    React.createElement('div', null,
+                                        React.createElement('div', { className: 'flex justify-between mb-2' },
+                                            React.createElement('span', { className: 'font-semibold text-gray-700' }, '📖 학습 스타일'),
+                                            React.createElement('span', { className: 'text-gray-600' }, `${result.scores.style.toFixed(1)}/5.0`)
+                                        ),
+                                        React.createElement('div', { className: 'w-full bg-gray-200 rounded-full h-3' },
+                                            React.createElement('div', {
+                                                className: 'bg-gradient-to-r from-green-400 to-teal-500 h-3 rounded-full transition-all duration-500',
+                                                style: { width: `${(result.scores.style / 5) * 100}%` }
+                                            })
+                                        ),
+                                        React.createElement('p', { className: 'text-sm text-gray-600 mt-1' },
+                                            result.scores.style >= 4.0 ? '집중 특화형' :
+                                            result.scores.style >= 3.0 ? '혼합형' : '균형 관리형'
+                                        )
+                                    )
+                                )
+                            )
+                        ),
+
+                        // 다시 검사하기 버튼
+                        React.createElement('div', { className: 'text-center' },
+                            React.createElement('button', {
+                                onClick: resetTest,
+                                className: 'inline-flex items-center px-8 py-3 bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-semibold rounded-lg hover:from-blue-600 hover:to-indigo-700 transition-all transform hover:scale-105'
+                            },
+                                React.createElement('span', { className: 'mr-2' }, '🔄'),
+                                '다시 검사하기'
+                            )
+                        )
+                    )
+                );
+            }
+
+            return null;
+        };
+
+        // 앱 렌더링
+        ReactDOM.render(React.createElement(AcademyRecommendationSystem), document.getElementById('root'));
+    </script>
+</body>
+</html>
