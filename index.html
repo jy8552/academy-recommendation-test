@@ -27,6 +27,8 @@
     <div id="root"></div>
 
     <script>
+        // Google Apps Script 웹 앱 URL
+        const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxjYii4fKzqpUHYu8MHgaUjI1UwRBRM1kq81c8m79XG09kW2PmXqgKKBH98awgmhuo/exec';
         // React 기본 설정
         const { useState } = React;
 
@@ -338,6 +340,9 @@
                     const result = calculateResult();
                     setResult(result);
                     setCurrentStep('result');
+                    
+                    // Google Sheets에 결과 저장
+                    saveToGoogleSheets(result);
                 }
             };
 
@@ -454,6 +459,36 @@
             };
 
             const progress = ((currentQuestion + 1) / questions.length) * 100;
+
+            // Google Sheets에 결과 저장하는 함수
+            const saveToGoogleSheets = async (resultData) => {
+                try {
+                    const response = await fetch(GOOGLE_APPS_SCRIPT_URL, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            userInfo: userInfo,
+                            gender: gender,
+                            academyName: academies[resultData.academy].name,
+                            score: resultData.score,
+                            scores: resultData.scores,
+                            reason: resultData.reason,
+                            timestamp: new Date().toISOString()
+                        })
+                    });
+                    
+                    const result = await response.json();
+                    if (result.success) {
+                        console.log('결과가 Google Sheets에 저장되었습니다.');
+                    } else {
+                        console.error('저장 오류:', result.error);
+                    }
+                } catch (error) {
+                    console.error('Google Sheets 저장 실패:', error);
+                }
+            };
 
             // 시작 화면
             if (currentStep === 'start') {
@@ -790,4 +825,5 @@
         ReactDOM.render(React.createElement(AcademyRecommendationSystem), document.getElementById('root'));
     </script>
 </body>
+
 </html>
