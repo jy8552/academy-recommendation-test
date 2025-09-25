@@ -39,6 +39,8 @@
             const [currentQuestion, setCurrentQuestion] = useState(0);
             const [answers, setAnswers] = useState({});
             const [result, setResult] = useState(null);
+            // (4) 중복 클릭 방지 상태 추가
+            const [answering, setAnswering] = useState(false);
 
             // 20개 문항 데이터 (4개 영역별 5문항씩)
             const questions = [
@@ -326,7 +328,6 @@
                     return;
                 }
 
-                    
                 // 생년월일 형식 검사
                 const birthDateRegex = /^\d{4}-\d{2}-\d{2}$/;
                 if (!birthDateRegex.test(userInfo.birthDate)) {
@@ -346,33 +347,48 @@
                 setAnswers({});
             };
 
+            // (1) 마지막 문항 누락 방지 + (4) 중복 클릭 방지
             const handleAnswer = (value, questionId) => {
+                if (answering) return;        // 연타 방지
+                setAnswering(true);
+
                 const newAnswers = { ...answers, [questionId]: { questionId, value } };
                 setAnswers(newAnswers);
 
                 if (currentQuestion < questions.length - 1) {
                     setCurrentQuestion(currentQuestion + 1);
+                    // 다음 문항으로 넘어간 뒤 버튼 다시 활성화
+                    setTimeout(() => setAnswering(false), 0);
                 } else {
-                    const result = calculateResult();
+                    const result = calculateResult(newAnswers); // ✅ 최신 답변으로 계산
                     setResult(result);
                     setCurrentStep('result');
-                    
-                    // Google Sheets에 결과 저장
-                    saveToGoogleSheets(result);
+                    // (3) 저장 성공/실패와 무관하게 화면은 유지
+                    saveToGoogleSheets(result).finally(() => {
+                        setAnswering(false);
+                    });
                 }
             };
 
-            const calculateResult = () => {
+            // ◀︎ 이전 문항으로 이동 (연타 방지 고려)
+            const goPrevQuestion = () => {
+                if (currentQuestion > 0 && !answering) {
+                    setCurrentQuestion(currentQuestion - 1);
+                }
+            };
+
+            // (1) answers를 인자로 받아서 계산하도록 수정
+            const calculateResult = (answersMap) => {
                 // 각 영역별 점수 계산
                 const scores = {
                     performance: 0,    // 학습 성취도
                     subject: 0,        // 과목 성향 (수학/과학)
                     environment: 0,    // 학습 환경 (경쟁/협력)
-                    style: 0          // 학습 스타일 (집중/균형)
+                    style: 0           // 학습 스타일 (집중/균형)
                 };
 
                 // 영역별 점수 합계
-                Object.values(answers).forEach(answer => {
+                Object.values(answersMap).forEach(answer => {
                     const question = questions.find(q => q.id === answer.questionId);
                     if (question) {
                         scores[question.category] += answer.value;
@@ -384,7 +400,7 @@
                     scores[key] = scores[key] / 5;
                 });
 
-                // 학원별 추천 점수 계산
+                // 학원별 추천 점수 계산 (원본 로직 유지)
                 let recommendations = [];
 
                 // 🏆 최상위권 전문관: 성취도 높음 + 경쟁 환경 선호
@@ -472,11 +488,12 @@
                 setCurrentQuestion(0);
                 setAnswers({});
                 setResult(null);
+                setAnswering(false);
             };
 
             const progress = ((currentQuestion + 1) / questions.length) * 100;
 
-            // Google Sheets에 결과 저장하는 함수 (CORS 문제 해결 버전)
+            // (3) Google Sheets 저장: 응답이 JSON이 아니어도 안전하게 처리
             const saveToGoogleSheets = async (resultData) => {
                 try {
                     const response = await fetch(GOOGLE_APPS_SCRIPT_URL, {
@@ -485,7 +502,7 @@
                             'Content-Type': 'text/plain', // JSON 대신 text/plain 사용
                         },
                         body: JSON.stringify({
-                            userInfo: userInfo,
+                            userInfo: userInfo, // ※ 2번(마스킹) 제외 요청에 따라 원본 그대로 전송
                             gender: gender,
                             academyName: academies[resultData.academy].name,
                             score: resultData.score,
@@ -494,17 +511,18 @@
                             timestamp: new Date().toISOString()
                         })
                     });
-        
-                    const result = await response.text(); // JSON 파싱 전에 텍스트로 받기
-                    const jsonResult = JSON.parse(result);
-        
-                    if (jsonResult.success) {
-                        console.log('결과가 Google Sheets에 저장되었습니다.');
-                    } else {
-                        console.error('저장 오류:', jsonResult.error);
+    
+                    const resText = await response.text(); // JSON 파싱 전에 텍스트로 받기
+                    let jsonResult = null;
+                    try { jsonResult = JSON.parse(resText); } catch (e) { /* JSON이 아닐 수 있음 */ }
+
+                    if (!response.ok || (jsonResult && !jsonResult.success)) {
+                        console.error('저장 오류:', (jsonResult && jsonResult.error) || resText);
+                        return; // 화면은 계속 진행
                     }
+                    console.log('결과가 Google Sheets에 저장되었습니다.');
                 } catch (error) {
-                    console.error('Google Sheets 저장 실패:', error);
+                    console.error('Google Sheets 저장 실패:', error); // 화면은 계속 진행
                 }
             };
             
@@ -660,6 +678,7 @@
             // 검사 화면
             if (currentStep === 'test') {
                 const currentQ = questions[currentQuestion];
+                const selectedValue = answers[currentQ.id]?.value;
                 
                 return React.createElement('div', {
                     className: 'min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4'
@@ -680,6 +699,14 @@
                                         className: 'bg-gradient-to-r from-blue-500 to-indigo-600 h-2 rounded-full transition-all duration-300',
                                         style: { width: `${progress}%` }
                                     })
+                                ),
+                                // ◀︎ 이전 문항 버튼
+                                React.createElement('div', { className: 'mt-3' },
+                                    React.createElement('button', {
+                                        onClick: goPrevQuestion,
+                                        disabled: currentQuestion === 0 || answering,
+                                        className: `px-3 py-1.5 text-sm rounded-lg border transition-colors ${currentQuestion === 0 || answering ? 'opacity-40 cursor-not-allowed border-gray-200 text-gray-400' : 'border-gray-300 text-gray-700 hover:bg-gray-100'}`
+                                    }, '← 이전 문항으로 돌아가기')
                                 )
                             ),
                             React.createElement('div', { className: 'text-center mb-8' },
@@ -692,7 +719,10 @@
                                     React.createElement('button', {
                                         key: index,
                                         onClick: () => handleAnswer(option.value, currentQ.id),
-                                        className: 'w-full p-4 text-left bg-gray-50 hover:bg-blue-50 border border-gray-200 hover:border-blue-300 rounded-lg transition-all transform hover:scale-[1.02]'
+                                        disabled: answering,
+                                        className: `w-full p-4 text-left border rounded-lg transition-all transform ${ (selectedValue === option.value) ? 'bg-blue-50 border-blue-400 ring-1 ring-blue-300' : 'bg-gray-50 border-gray-200' } ${answering ? 'opacity-50 pointer-events-none' : 'hover:bg-blue-50 hover:border-blue-300 hover:scale-[1.02]'}` ,
+                                        'aria-pressed': (selectedValue === option.value),
+                                        title: (selectedValue === option.value) ? '선택됨' : '선택'
                                     },
                                         React.createElement('div', { className: 'flex items-center' },
                                             React.createElement('div', {
@@ -859,5 +889,3 @@
 </body>
 
 </html>
-
-
