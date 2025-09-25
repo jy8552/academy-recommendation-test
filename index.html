@@ -325,6 +325,22 @@
                     alert('모든 정보를 입력해주세요.');
                     return;
                 }
+
+                    
+                // 생년월일 형식 검사
+                const birthDateRegex = /^\d{4}-\d{2}-\d{2}$/;
+                if (!birthDateRegex.test(userInfo.birthDate)) {
+                    alert('생년월일을 올바른 형식으로 입력해주세요. (YYYY-MM-DD)');
+                    return;
+                }
+    
+                // 연락처 형식 검사
+                const phoneRegex = /^\d{3}-\d{4}-\d{4}$/;
+                if (!phoneRegex.test(userInfo.phone)) {
+                    alert('연락처를 올바른 형식으로 입력해주세요. (010-1234-5678)');
+                    return;
+                }
+                
                 setCurrentStep('test');
                 setCurrentQuestion(0);
                 setAnswers({});
@@ -591,6 +607,8 @@
                                     React.createElement('input', {
                                         type: 'date',
                                         value: userInfo.birthDate,
+                                        min: '1900-01-01',
+                                        max: '2025-12-31',
                                         onChange: (e) => handleUserInfoChange('birthDate', e.target.value),
                                         className: 'w-full p-4 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none transition-colors text-lg'
                                     })
@@ -603,7 +621,18 @@
                                         type: 'tel',
                                         placeholder: '010-1234-5678',
                                         value: userInfo.phone,
-                                        onChange: (e) => handleUserInfoChange('phone', e.target.value),
+                                        maxLength: 13,
+                                        pattern: '[0-9]{3}-[0-9]{4}-[0-9]{4}',
+                                        onChange: (e) => {
+                                            let value = e.target.value.replace(/[^0-9]/g, '');
+                                            if (value.length >= 3) {
+                                                value = value.slice(0,3) + '-' + value.slice(3);
+                                            }
+                                            if (value.length >= 8) {
+                                                value = value.slice(0,8) + '-' + value.slice(8,12);
+                                            }
+                                            handleUserInfoChange('phone', value);
+                                        },
                                         className: 'w-full p-4 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none transition-colors text-lg'
                                     })
                                 )
@@ -830,4 +859,5 @@
 </body>
 
 </html>
+
 
