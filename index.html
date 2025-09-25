@@ -460,13 +460,13 @@
 
             const progress = ((currentQuestion + 1) / questions.length) * 100;
 
-            // Google Sheets에 결과 저장하는 함수
+            // Google Sheets에 결과 저장하는 함수 (CORS 문제 해결 버전)
             const saveToGoogleSheets = async (resultData) => {
                 try {
                     const response = await fetch(GOOGLE_APPS_SCRIPT_URL, {
                         method: 'POST',
                         headers: {
-                            'Content-Type': 'application/json',
+                            'Content-Type': 'text/plain', // JSON 대신 text/plain 사용
                         },
                         body: JSON.stringify({
                             userInfo: userInfo,
@@ -478,17 +478,20 @@
                             timestamp: new Date().toISOString()
                         })
                     });
-                    
-                    const result = await response.json();
-                    if (result.success) {
+        
+                    const result = await response.text(); // JSON 파싱 전에 텍스트로 받기
+                    const jsonResult = JSON.parse(result);
+        
+                    if (jsonResult.success) {
                         console.log('결과가 Google Sheets에 저장되었습니다.');
                     } else {
-                        console.error('저장 오류:', result.error);
+                        console.error('저장 오류:', jsonResult.error);
                     }
                 } catch (error) {
                     console.error('Google Sheets 저장 실패:', error);
                 }
             };
+            
 
             // 시작 화면
             if (currentStep === 'start') {
@@ -827,3 +830,4 @@
 </body>
 
 </html>
+
